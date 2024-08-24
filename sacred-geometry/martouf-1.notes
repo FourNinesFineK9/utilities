@@ -1,0 +1,92 @@
+
+https://martouf.ch/2019/11/quest-ce-que-la-geometrie-sacree-introduction/
+
+GNU units
+bash
+
+Impro simple:
+
+linux>  units -o "%5.8f" -t "(1 + sqrt(5)) / 2"
+1.61803399
+linux> phi=` units -o "%5.8f" -t "(1 + sqrt(5)) / 2"`
+linux> echo $phi 
+1.61803399
+
+# copier / coller sous linux:
+#
+phi=` units -o "%5.8f" -t "(1 + sqrt(5)) / 2"`
+if [ -f "tmp" ]; then rm -f tmp; fi; touch tmp;     
+cat >> tmp << EOF                                   
+units -o "%5.8f" -t "$phi"
+units -o "%5.8f" -t "$phi^(-1)"
+units -o "%5.8f" -t "$phi^(2)"
+units -o "%5.8f" -t "$phi^(1/2)"
+units -o "%5.8f" -t "sqrt(5)"
+units -o "%5.8f" -t "sqrt(3)"
+units -o "%5.8f" -t "sqrt(2)"
+units -o "%5.8f" -t "exp(1)"
+units -o "%5.8f" -t "$phi^(2)+(1/10)"
+units -o "%5.8f" -t pi
+units -o "%5.8f" -t "pi / 4"
+units -o "%5.8f" -t "pi / 6"
+units -o "%5.8f" -t "cos(pi/6)"
+units -o "%5.8f" -t "pi - $phi^(2)"
+units -o "%5.8f" -t "$phi^(2) / 5"
+units -o "%5.8f" -t "(5/6) pi"
+units -o "%5.8f" -t "(1 + 2 + sqrt(5)) / 10"
+units -o "%5.8f" -t "50 in" m
+EOF
+chmod 755 tmp
+./tmp > output
+cat tmp | cut -c21- > tmp2
+paste -d " "  output tmp2 | sort
+
+linux> paste -d " "  output tmp2 | sort | sed 's/\"//g'
+0.52355866 pi - 1.61803399^(2)
+0.52359878 pi / 6
+0.52360680 (1 + 2 + sqrt(5)) / 10
+0.52360680 1.61803399^(2) / 5
+0.61803399 1.61803399^(-1)
+0.78539816 pi / 4
+0.86602540 cos(pi/6)
+1.27000000 50 in m
+1.27201965 1.61803399^(1/2)
+1.41421356 sqrt(2)
+1.61803399 1.61803399
+1.73205081 sqrt(3)
+2.23606798 sqrt(5)
+2.61799388 (5/6) pi
+2.61803399 1.61803399^(2)
+2.71803399 1.61803399^(2)+(1/10)
+2.71828183 exp(1)
+3.14159265 pi
+
+A poster sur le site de Martouf:
+
+linux>  units -o "%5.8f" -t "(1 + sqrt(5)) / 2"
+1.61803399
+linux> phi=` units -o "%5.8f" -t "(1 + sqrt(5)) / 2"`
+linux> echo $phi 
+1.61803399
+
+
+0.52355866 pi - 1.61803399^(2)
+0.52359878 pi / 6
+0.52360680 (1 + 2 + sqrt(5)) / 10
+0.52360680 1.61803399^(2) / 5
+0.61803399 1.61803399^(-1)
+0.78539816 pi / 4
+0.86602540 cos(pi/6)
+1.27000000 50 in m
+1.27201965 1.61803399^(1/2)
+1.41421356 sqrt(2)
+1.61803399 1.61803399
+1.73205081 sqrt(3)
+2.23606798 sqrt(5)
+2.61799388 (5/6) pi
+2.61803399 1.61803399^(2)
+2.71803399 1.61803399^(2)+(1/10)
+2.71828183 exp(1)
+3.14159265 pi
+
+
