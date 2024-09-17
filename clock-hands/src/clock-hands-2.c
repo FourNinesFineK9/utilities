@@ -38,18 +38,18 @@ int main(int argc, char *argv[])
       {
       tmp_minute = 60 + minute;
       tmp_hour = hour - 1;
-      printf ("%02d:%02.f:%06.3f\n", tmp_hour, floor(tmp_minute), (tmp_minute - floor(tmp_minute)) * 60.0);
       }
     else if (minute >= 60)
         {
         tmp_minute = minute - 60;
         tmp_hour = hour + 1;
-        printf ("%02d:%02.f:%06.3f\n", tmp_hour, floor(tmp_minute), (tmp_minute - floor(tmp_minute)) * 60.0);
         }
       else
         {
-        printf ("%02d:%02.f:%06.3f\n", hour, floor(minute), (minute - floor(minute)) * 60.0);
+        tmp_minute = minute;
+        tmp_hour = hour;
         }
+    printf ("%02d:%02.f:%06.3f\n", tmp_hour, floor(tmp_minute), (tmp_minute - floor(tmp_minute)) * 60.0);
     }
   return 0;
   }
