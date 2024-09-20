@@ -10,4 +10,4 @@
 H=`echo $1 | cut -d ":" -f1`  
 M=`echo $1 | cut -d ":" -f2`
 #
-units -t " 0.5 (60 $H + $M) - ($M * 6)" | xargs printf "# %-4.6f\n"
+units -t " 0.5 (60 $H + $M) - ($M * 6)"

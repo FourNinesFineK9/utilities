@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
     if (j < 0)
       {
       hour = i - 1;
-      minute = 60 + j;
+      minute = j + 60;
       }
     else if (j >= 60)
       {
