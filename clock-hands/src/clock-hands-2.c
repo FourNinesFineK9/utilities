@@ -5,11 +5,23 @@ delta_theta in degrees (+ or -) {0..360}
 Output
 In "00:00:00.000" format going through the (12 - 1) intervals around the clock
 
+Compile and run under linux:
+
+gcc -o clock-hands-2 src/clock-hands-2.c -lm
+./clock-hands-2 90
+
 https://en.wikipedia.org/wiki/Clock_angle_problem
+
+Define angle between clock hands:
+delta_theta = theta[Hour Hand] - theta [Minute Hand]
+Keep the sign (unlike in the Wiki article just quoted)  
 
 (delta_theta > 0), hour hand ahead
 (delta_theta == 0), conjunction
 (delta_theta < 0), minute hand ahead
+
+Angles are measured wrt North (12 o'clock). Same as in navigation bearings.
+Unlike maths quadrants (which start from East, or (1,0) on a unit circle.
 
 Interactive clock to experiment with
 https://toytheater.com/clock/
