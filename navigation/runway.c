@@ -9,11 +9,11 @@ gcc -o runway src/runway.c
 #include <stdlib.h>
 
 int main(int argc, char *argv[])
-	{
-        int i;
+  {
+  int i;
 
-	i = atoi(argv[1]);
-        printf ("%03d %03d\n", i * 10, ((i * 10) + 180) % 360); 
-	return 0;
-	}
+  i = atoi(argv[1]);
+  printf ("%03d %03d\n", i * 10, ((i * 10) + 180) % 360); 
+  return 0;
+  }
 
