@@ -1,0 +1,187 @@
+-------------------
+
+Einkommensteuer
+
+Verheiratetentarif
+
+-------------------
+
+cp ./"Notizen-Kanton-ZH-Einkommenssteuer-Verheiratetentarif" .."/backup/Notizen-Kanton-ZH-Einkommenssteuer-Verheiratetentarif"-`date -u +"%Y-%m-%d-T%T-%Z"`
+
+evince -i 20 ../official\ docs/631.1_8.6.97_127.pdf &
+
+NameOfDataFile="../dat/Kanton-ZH-Einkommenssteuer-Verheiratetentarif"
+
+-------------------
+
+#
+# Manual scrape
+# Kopieren/ hinfügen
+#
+rm -f tmp 
+cat >> tmp << EOF 
+§ 34 Abs. 1 lit. a zusammenleben, beträgt die Einkommenssteuer (Ver-
+heiratetentarif):
+0% für die ersten
+Fr. 13 900
+2% für die weiteren
+Fr. 6 300
+3% für die weiteren
+Fr. 8 000
+4% für die weiteren
+Fr. 9 700
+5% für die weiteren
+Fr. 11 100
+6% für die weiteren
+Fr. 14 300
+7% für die weiteren
+Fr. 31 800
+8% für die weiteren
+Fr. 31 900
+9% für die weiteren
+Fr. 47 900
+10% für die weiteren
+Fr. 57 200
+11% für die weiteren
+Fr. 62 100
+12% für die weiteren
+Fr. 71 600
+13% für Einkommensteile über
+Fr. 365 800
+EOF
+
+cat tmp | grep "%" | nl -ba
+
+# Manuell ist wieder sicherer
+
+for i in `seq 2 13`; do units -t -o "%.2f" $i/100; done > tmp2
+cat tmp2 | sed '1i 0' > marginal-rates
+cat marginal-rates | nl -ba | sed 's/^/# /g'
+#      1	0
+#      2	0.02
+#      3	0.03
+#      4	0.04
+#      5	0.05
+#      6	0.06
+#      7	0.07
+#      8	0.08
+#      9	0.09
+#     10	0.10
+#     11	0.11
+#     12	0.12
+#     13	0.13
+
+cat tmp | grep Fr | cut -c5- | tr -d " " > deltas
+
+cat deltas | nl -ba | sed 's/^/# /g'
+#      1	13900
+#      2	6300
+#      3	8000
+#      4	9700
+#      5	11100
+#      6	14300
+#      7	31800
+#      8	31900
+#      9	47900
+#     10	57200
+#     11	62100
+#     12	71600
+#     13	365800
+
+#
+# Merkwürdig aber so sind sie
+#
+cat deltas | awk ' { sum += $1; print sum }' > bounds
+
+#
+# Let's check that data going backwards
+#
+cat bounds | awk '{ difference = $1 - last; print difference; last = $1; next }' > checks
+
+linux> paste deltas checks | nl -ba | sed 's/^/# /g'
+#      1	13900	13900
+#      2	6300	6300
+#      3	8000	8000
+#      4	9700	9700
+#      5	11100	11100
+#      6	14300	14300
+#      7	31800	31800
+#      8	31900	31900
+#      9	47900	47900
+#     10	57200	57200
+#     11	62100	62100
+#     12	71600	71600
+#     13	365800	365800
+
+#
+# Immer gut zu überprüfen
+#
+linux> tail -1 bounds
+731600
+#
+# Brauchen wir nicht
+#
+cat bounds | sed '$d' | sed '$a 999999999'
+cat bounds | sed '$d' | sed '$a 999999999' > tmp2
+
+paste -d " " marginal-rates tmp2 > $NameOfDataFile
+
+cat $NameOfDataFile | nl -ba | sed 's/^/# /g'
+#      1	0 6900
+#      2	0.02 11800
+#      3	0.03 16600
+#      4	0.04 24500
+#      5	0.05 34100
+#      6	0.06 45100
+#      7	0.07 58000
+#      8	0.08 75400
+#      9	0.09 109000
+#     10	0.10 142200
+#     11	0.11 194900
+#     12	0.12 263300
+#     13	0.13 999999999
+
+NameOfDataFile="../dat/Kanton-ZH-Einkommenssteuer-Verheiratetentarif"
+Jahr=2024
+Kantonsteuerfuss=98
+Gemeinde="Zürich"
+Gemeindesteuerfuss=`grep $Gemeinde ../dat/Gemeindesteuerfüsse-$Jahr | cut -d " " -f2`
+GesamtMultiplikator=`units -t " ($Gemeindesteuerfuss+$Kantonsteuerfuss)/100"`
+printf "#\n# %20s %5g %5g %5g %5g\n#\n" $Gemeinde $Jahr $Gemeindesteuerfuss $Kantonsteuerfuss $GesamtMultiplikator | tr -s " "
+#
+for Y in `seq 50000 25000 200000`
+	do
+	BaseTax=`./calc-tax $NameOfDataFile $Y`
+	FinalTax=`units -t "$GesamtMultiplikator * $BaseTax"`
+	AverageRate=`units -t "$FinalTax / $Y"`
+	printf "# %20s%5g%8.f%8.f%5.2f%8.f%10.6f\n" $Gemeinde $Jahr $Y $BaseTax $GesamtMultiplikator $FinalTax $AverageRate
+	done
+date +"%T %e %b %Y DoY %j Week %V %a %A %::z" | sed 's/^/# /1'
+#
+# Zürich 2024 119 98 2.17
+#
+#              Zürich 2024   50000    1369 2.17    2971  0.059415
+#              Zürich 2024   75000    2986 2.17    6480  0.086395
+#              Zürich 2024  100000    4785 2.17   10383  0.103834
+#              Zürich 2024  125000    6785 2.17   14723  0.117788
+#              Zürich 2024  150000    9015 2.17   19563  0.130417
+#              Zürich 2024  175000   11266 2.17   24447  0.139698
+#              Zürich 2024  200000   13766 2.17   29872  0.149361
+# 21:44:00  7 Dez 2025 DoY 341 Week 49 So Sonntag +01:00:00
+
+#
+# compare with
+# https://www.zkb.ch/de/private/steuern/rechner-hilfsmittel/steuerrechner.html
+# looks good
+# have to add in Kopfsteuer each time
+# CHF 48
+#
+linux> units -t "3019 - 48" | xargs printf "# %.f\n"
+# 2971
+linux> units -t "`echo "29'921" | tr -d "'"` - 48" | xargs printf "# %.f\n"
+# 29873
+#
+# 0 oder 1 CHF Differenz
+# Gut genug
+# Bobs your uncle. Wir sind fertig.
+#

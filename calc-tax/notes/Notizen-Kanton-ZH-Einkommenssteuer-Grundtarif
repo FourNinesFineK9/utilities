@@ -1,0 +1,173 @@
+-------------------
+
+Einkommensteuer
+
+Grundtarif
+
+
+cp ./"Notizen-Kanton-ZH-Einkommenssteuer-Grundtarif" .."/backup/Notizen-Kanton-ZH-Einkommenssteuer-Grundtarif"-`date -u +"%Y-%m-%d-T%T-%Z"`
+
+evince -i 20 ../official\ docs/631.1_8.6.97_127.pdf &
+
+NameOfDataFile="../dat/Kanton-ZH-Einkommenssteuer-Grundtarif"
+
+#
+# Manual scrape
+# Kopieren/ hinfügen
+#
+# § 35. 1 Die Einkommenssteuer beträgt (Grundtarif):109
+#
+rm -f tmp 
+cat >> tmp << EOF 
+0% für die ersten
+Fr. 6 900
+2% für die weiteren
+Fr. 4 900
+3% für die weiteren
+Fr. 4 800
+4% für die weiteren
+Fr. 7 900
+5% für die weiteren
+Fr. 9 600
+6% für die weiteren
+Fr. 11 000
+7% für die weiteren
+Fr. 12 900
+8% für die weiteren
+Fr. 17 400
+9% für die weiteren
+Fr. 33 600
+10% für die weiteren
+Fr. 33 200
+11% für die weiteren
+Fr. 52 700
+12% für die weiteren
+Fr. 68 400
+13% für Einkommensteile über
+Fr. 263 300
+EOF
+
+cat tmp | grep "%" | nl -ba
+
+# Manuell ist sicherer
+
+for i in `seq 2 13`; do units -t -o "%.2f" $i/100; done > tmp2
+cat tmp2 | sed '1i 0' > marginal-rates
+cat marginal-rates | nl -ba | sed 's/^/# /g'
+#      1	0
+#      2	0.02
+#      3	0.03
+#      4	0.04
+#      5	0.05
+#      6	0.06
+#      7	0.07
+#      8	0.08
+#      9	0.09
+#     10	0.10
+#     11	0.11
+#     12	0.12
+#     13	0.13
+
+cat tmp | grep Fr | cut -c5- | tr -d " " > deltas
+
+cat deltas | nl -ba | sed 's/^/# /g'
+#      1	6900
+#      2	4900
+#      3	4800
+#      4	7900
+#      5	9600
+#      6	11000
+#      7	12900
+#      8	17400
+#      9	33600
+#     10	33200
+#     11	52700
+#     12	68400
+#     13	263300
+
+cat deltas | awk ' { sum += $1; print sum }' > bounds
+
+#
+# Let's check that data going backwards
+#
+cat bounds | awk '{ difference = $1 - last; print difference; last = $1; next }' > checks
+
+paste deltas checks | nl -ba | sed 's/^/# /g'
+linux> paste deltas checks | nl -ba | sed 's/^/# /g'
+#      1	6900	6900
+#      2	4900	4900
+#      3	4800	4800
+#      4	7900	7900
+#      5	9600	9600
+#      6	11000	11000
+#      7	12900	12900
+#      8	17400	17400
+#      9	33600	33600
+#     10	33200	33200
+#     11	52700	52700
+#     12	68400	68400
+#     13	263300	263300
+
+#
+# Isch guet
+#
+tail -1 bounds 
+526600
+#
+# 1 fence post too many
+# delete it
+# better: replace it with notional arbitrary high bound
+#
+cat bounds | sed '$d' | sed '$a 999999999'
+cat bounds | sed '$d' | sed '$a 999999999' > tmp2
+
+paste -d " " marginal-rates tmp2 > $NameOfDataFile
+
+cat $NameOfDataFile | nl -ba | sed 's/^/# /g'
+#      1	0 6900
+#      2	0.02 11800
+#      3	0.03 16600
+#      4	0.04 24500
+#      5	0.05 34100
+#      6	0.06 45100
+#      7	0.07 58000
+#      8	0.08 75400
+#      9	0.09 109000
+#     10	0.10 142200
+#     11	0.11 194900
+#     12	0.12 263300
+#     13	0.13 999999999
+
+Jahr=2024
+Kantonsteuerfuss=98
+Gemeinde="Zürich"
+Gemeindesteuerfuss=`grep $Gemeinde ../dat/Gemeindesteuerfüsse-$Jahr | cut -d " " -f2`
+GesamtMultiplikator=`units -t " ($Gemeindesteuerfuss+$Kantonsteuerfuss)/100"`
+printf "#\n# %20s %5g %5g %5g %5g\n#\n" $Gemeinde $Jahr $Gemeindesteuerfuss $Kantonsteuerfuss $GesamtMultiplikator | tr -s " "
+#
+for Y in `seq 50000 25000 200000`
+	do
+	BaseTax=`./calc-tax $NameOfDataFile $Y`
+	FinalTax=`units -t "$GesamtMultiplikator * $BaseTax"`
+	AverageRate=`units -t "$FinalTax / $Y"`
+	printf "# %20s%5g%8.f%8.f%5.2f%8.f%10.6f\n" $Gemeinde $Jahr $Y $BaseTax $GesamtMultiplikator $FinalTax $AverageRate
+	done
+date +"%T %e %b %Y DoY %j Week %V %a %A %::z" | sed 's/^/# /1'
+
+#              Zürich 2024   50000    2041 2.17    4429  0.088579
+#              Zürich 2024   75000    3961 2.17    8595  0.114605
+#              Zürich 2024  100000    6207 2.17   13469  0.134692
+#              Zürich 2024  125000    8617 2.17   18699  0.149591
+#              Zürich 2024  150000   11195 2.17   24293  0.161954
+#              Zürich 2024  175000   13945 2.17   30261  0.172918
+#              Zürich 2024  200000   16746 2.17   36339  0.181694
+
+#
+# compare with
+# https://www.zkb.ch/de/private/steuern/rechner-hilfsmittel/steuerrechner.html
+# looks good
+# have to add in Kopfsteuer each time
+# CHF 24
+#
+
+
