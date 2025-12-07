@@ -1,0 +1,265 @@
+--------------------------
+
+Machen wir die gleiche Arbeit für die Verheiratetentarif
+
+Code kommt von der ersten Datei:
+
+Notizen-Kanton-ZH-VermögenssteuerTarife-Grundtarif
+
+cp ./"Notizen-Kanton-ZH-VermögenssteuerTarife-Verheiratetentarif" .."/backup/Notizen-Kanton-ZH-VermögenssteuerTarife-Verheiratetentarif"-`date -u +"%Y-%m-%d-T%T-%Z"`
+
+--------------------------
+
+linux>
+evince -i 24 ../official\ docs/631.1_8.6.97_127.pdf &
+
+
+§ 34 Abs. 1 lit. a zusammenleben, beträgt die Vermögenssteuer (Ver-
+heiratetentarif):
+
+rm -f tmp
+cat >> tmp << EOF
+0‰
+für die ersten
+Fr. 159 000
+½‰ für die weiteren
+Fr. 239 000
+1‰
+für die weiteren
+Fr. 397 000
+1½‰ für die weiteren
+Fr. 637 000
+2‰
+für die weiteren
+Fr. 955 000
+2½‰ für die weiteren
+Fr. 955 000
+3‰
+für Vermögensteile über
+Fr. 3 342 000
+EOF
+
+#
+#
+# We now transform this text into usable data:
+#
+#
+
+
+cat tmp | grep "‰"
+0‰
+½‰ für die weiteren
+1‰
+1½‰ für die weiteren
+2‰
+2½‰ für die weiteren
+3‰
+
+#
+# Gleiche Stufen wie für den Grundtarif
+#
+
+linux> seq 0 0.0005 0.003
+0.0000
+0.0005
+0.0010
+0.0015
+0.0020
+0.0025
+0.0030
+linux> cat marginal-rates | nl -ba
+     1	0.0000
+     2	0.0005
+     3	0.0010
+     4	0.0015
+     5	0.0020
+     6	0.0025
+     7	0.0030
+#
+#
+# 7 intervals in the wealth tax fence
+# (7+1) = 8
+# 8 posts in the fence
+# To figure out below
+#
+#
+seq 0 0.0005 0.003 > marginal-rates
+#
+#
+
+linux>  cat tmp | grep Fr | cut -c5- | tr -d " " | nl -ba
+     1	159000
+     2	239000
+     3	397000
+     4	637000
+     5	955000
+     6	955000
+     7	3342000
+#
+# Delete last line. That's a post not an interval
+#
+cat tmp | grep Fr | cut -c5- | tr -d " " | sed '$d'
+
+linux> cat tmp | grep Fr | cut -c5- | tr -d " " | sed '$d'
+159000
+239000
+397000
+637000
+955000
+955000
+linux> cat tmp | grep Fr | cut -c5- | tr -d " " | sed '$d' > deltas
+
+#
+#
+# Alles Differenzen
+#
+#
+
+
+#
+# 6 fence post intervals...
+#
+#
+#
+# Transform those delta values programmatically into proper data
+#
+# Mathematically:
+#
+# sigma ((i=0..m) (x[i])) for all m
+# =
+# sum ((i=0..m) (x[i]))
+linux> cat deltas | awk '{ sum += $1; print sum }' | nl -ba
+     1	159000
+     2	398000
+     3	795000
+     4	1432000
+     5	2387000
+     6	3342000
+#
+# Add a notional fictitious last post
+#
+linux>  cat deltas | awk '{ sum += $1; print sum }' | sed '$a 999999999' | nl -ba
+     1	159000
+     2	398000
+     3	795000
+     4	1432000
+     5	2387000
+     6	3342000
+     7	999999999
+#
+#
+#
+
+cat deltas | awk '{ sum += $1; print sum }' | sed '$a 999999999' > bounds
+linux> cat deltas | awk '{ sum += $1; print sum }' | sed '$a 999999999' > bounds
+linux> cat bounds | nl -ba
+     1	159000
+     2	398000
+     3	795000
+     4	1432000
+     5	2387000
+     6	3342000
+     7	999999999
+
+#
+# Let's check that data going backwards
+#
+cat bounds | awk '{ difference = $1 - last; print difference; last = $1; next }' | nl -ba
+
+paste -d " "  deltas check
+linux> paste -d " "  deltas check
+159000      1	159000
+239000      2	239000
+397000      3	397000
+637000      4	637000
+955000      5	955000
+955000      6	955000
+      7	996657999
+
+Good
+
+#
+#
+# 7 fence posts
+# 8 in total. 0 is the implicit first post (7+1) posts in total
+#
+	
+paste -d " " marginal-rates bounds | nl -ba | sed 's/^/# /g'
+linux> paste -d " " marginal-rates bounds | nl -ba | sed 's/^/# /g'
+#      1	0.0000 159000
+#      2	0.0005 398000
+#      3	0.0010 795000
+#      4	0.0015 1432000
+#      5	0.0020 2387000
+#      6	0.0025 3342000
+#      7	0.0030 999999999
+#
+# 7 slices or tax brackets
+#
+paste -d " " marginal-rates bounds >  ../dat/Kanton-ZH-VermögenssteuerTarife-Verheiratetentarif
+#
+#
+# We now have our data
+# We can begin to do actual useful work
+#
+#
+
+#
+# Test run
+#
+#
+# https://neho.ch/de/blog/vermogenssteuer-zurich
+#
+
+Jahr=2024
+Kantonsteuerfuss=98
+Gemeinde="Zürich"
+Gemeindesteuerfuss=`grep $Gemeinde ../dat/Gemeindesteuerfüsse-$Jahr | cut -d " " -f2`
+GesamtMultiplikator=`units -t " ($Gemeindesteuerfuss+$Kantonsteuerfuss)/100"`
+printf "#\n# %20s %5g %5g %5g %5g\n#\n" $Gemeinde $Jahr $Gemeindesteuerfuss $Kantonsteuerfuss $GesamtMultiplikator | tr -s " "
+#
+for V in `seq 250000 250000 4000000`
+	do
+	BaseTax=`./calc-tax  ../dat/Kanton-ZH-VermögenssteuerTarife-Verheiratetentarif $V`
+	FinalTax=`units -t "$GesamtMultiplikator * $BaseTax"`
+	AverageRate=`units -t "$FinalTax / $V"`
+	printf "# %20s%5g%8.f%8.f%5.2f%8.f%10.6f\n" $Gemeinde $Jahr $V $BaseTax $GesamtMultiplikator $FinalTax $AverageRate
+	done
+#
+# Zürich 2024 119 98 2.17
+#
+#              Zürich 2024  250000      46 2.17     100  0.000399
+#              Zürich 2024  500000     222 2.17     482  0.000963
+#              Zürich 2024  750000     472 2.17    1024  0.001366
+#              Zürich 2024 1000000     824 2.17    1788  0.001788
+#              Zürich 2024 1250000    1199 2.17    2602  0.002081
+#              Zürich 2024 1500000    1608 2.17    3489  0.002326
+#              Zürich 2024 1750000    2108 2.17    4574  0.002614
+#              Zürich 2024 2000000    2608 2.17    5659  0.002830
+#              Zürich 2024 2250000    3108 2.17    6744  0.002997
+#              Zürich 2024 2500000    3664 2.17    7951  0.003180
+#              Zürich 2024 2750000    4290 2.17    9309  0.003385
+#              Zürich 2024 3000000    4914 2.17   10663  0.003554
+#              Zürich 2024 3250000    5540 2.17   12022  0.003699
+#              Zürich 2024 3500000    6244 2.17   13549  0.003871
+#              Zürich 2024 3750000    6994 2.17   15177  0.004047
+#              Zürich 2024 4000000    7744 2.17   16804  0.004201
+linux> cat ../dat/Kanton-ZH-VermögenssteuerTarife-Verheiratetentarif | nl -ba
+     1	0.0000 159000
+     2	0.0005 398000
+     3	0.0010 795000
+     4	0.0015 1432000
+     5	0.0020 2387000
+     6	0.0025 3342000
+     7	0.0030 99999999
+
+
+# Fertig
+date +"%T %e %b %Y DoY %j Week %V %a %A %::z" | sed 's/^/# /1'
+# 15:30:54  7 Dez 2025 DoY 341 Week 49 So Sonntag +01:00:00
+# 15:38:21  7 Dez 2025 DoY 341 Week 49 So Sonntag +01:00:00
+# 15:39:07  7 Dez 2025 DoY 341 Week 49 So Sonntag +01:00:00
+
+
+
+

@@ -1,0 +1,414 @@
+
+11:38:49  5 Dez 2025 DoY 339 Week 49 Fr Freitag +01:00:00
+
+cp ./"Notizen-Kanton-ZH-VermögenssteuerTarife-Grundtarif" .."/backup/Notizen-Kanton-ZH-VermögenssteuerTarife-Grundtarif"-`date -u +"%Y-%m-%d-T%T-%Z"`
+
+---------------------------
+
+https://en.wikipedia.org/wiki/Off-by-one_error#Fencepost_error
+
+Fence posts
+!=
+Intervals
+
+A fence has n posts
+thus
+(n-1) intervals
+
+Conversely if you have
+
+m intervals
+you have
+(m+1) posts
+
+Very relevant to thinking about tax tables
+
+Marginal rate
+!=
+Average rate
+
+Some tax systems publish the data for the posts 
+Others publish data for the intervals (deltas)
+
+In actual fact below, 2 posts are implicit
+
+Post0 == 0
+PostLast == 999999999
+
+999999999
+123456789
+
+Some high number
+
+---------------------------
+
+Zürich in Switzerland present their data as brackets
+== slice
+== interval
+== delta values
+
+The Zürich tax tables have m intervals
+We want to calculate the values of the (m+1) posts
+
+---------------------------------------------------
+
+Swiss note:
+
+In ZH as with many other cantons (eg: VD), after working out your base tax either for income or for wealth, you then multiply by the sum of 2 factors divided by 100 to get final tax.
+
+---------------------------------------------------
+
+Those 2 factors can be extracte like so:
+
+
+Steuerfüsse
+------------
+https://www.zh.ch/de/steuern-finanzen/steuern/steuerstatistiken/aktuelle-gemeinde-steuerfuesse.html#/
+
+Tarife:
+
+https://www.notes.zh.ch/appl/zhlex_r.nsf/WebView/B51FEC97C47FE954C1258BBF004304B6/$File/631.1_8.6.97_127.pdf
+
+oder
+
+https://www.zh.ch/de/politik-staat/gesetze-beschluesse/gesetzessammlung/zhlex-ls/erlass-631_1-1997_06_08-1999_01_01-107.html
+
+oder
+
+https://www.zh.ch/de/steuern-finanzen/steuern/treuhaender/steuerbuch/steuerbuch-definition/zstb-34-1.html?search=Verm%C3%B6genssteuer%20Grundtarif
+
+
+---------------
+
+The factor the canton:
+
+Kanton ZH
+
+Demgegenüber ist der Staatssteuerfuss für alle Gemeinden gleich. Er wird vom Kantonsrat festgesetzt und liegt derzeit bei 98 Prozent der einfachen Staatssteuer. Dies, nachdem er in den Jahren 2022 und 2023 bei 99 Prozent und zuvor seit 2003 bei 100 Prozent gelegen hatte.
+
+Uebersetzung:
+98
+
+Kantonsteuerfuss=98
+
+---------------
+
+The factor the town or village:
+
+
+Gemeinde ZH
+https://www.zh.ch/de/steuern-finanzen/steuern/steuerstatistiken/aktuelle-gemeinde-steuerfuesse.html#/
+Datenexport:
+
+Jahr=2024
+cat ../official\ docs/kanton_zuerich_stf_timeseries.csv | awk -v welches=$Jahr -F "," '{ if ((NR > 1) && ($1==welches)) printf "%s %s\n", $3, $4}' | tr -d '"' | sort -t " " -k1 > ../dat/Gemeindesteuerfüsse-$Jahr
+
+ls -ngtr ../official\ docs/
+
+linux> ls -ngtr ../official\ docs/
+total 2056
+-rw-rw-r-- 1 1000 1320331 Dez  1 18:21  631.1_8.6.97_127.pdf
+-rw-rw-r-- 1 1000  230773 Dez  1 18:36  631.1_8.6.97_127.txt
+-rw-rw-r-- 1 1000   16099 Dez  5 11:01 'Gemeindesteuerfüsse 2025.csv'
+-rw-rw-r-- 1 1000  392533 Dez  5 13:43  KTZH_00000005_00001150.xlsx
+-rw-rw-r-- 1 1000  135634 Dez  5 13:44  kanton_zuerich_stf_timeseries.csv
+
+Jahr=2024
+cat ../official\ docs/kanton_zuerich_stf_timeseries.csv | awk -v welches=$Jahr -F "," '{ if ((NR > 1) && ($1==welches)) printf "%s %s\n", $3, $4}' | tr -d '"' | sort -t " " -k1 > ../dat/Gemeindesteuerfüsse-$Jahr
+
+Jahr=2024
+Kantonsteuerfuss=98
+Gemeinde="Wallisellen"
+Gemeindesteuerfuss=`grep $Gemeinde ../dat/Gemeindesteuerfüsse-$Jahr | cut -d " " -f2`
+GesamtMultiplikator=`units -t " ($Gemeindesteuerfuss+$Kantonsteuerfuss)/100"`
+printf "#\n# %20s %5g %5g %5g %5g\n#\n" $Gemeinde $Jahr $Gemeindesteuerfuss $Kantonsteuerfuss $GesamtMultiplikator | tr -s " "
+#
+# Wallisellen 2024 95 98 1.93
+#
+
+That covers the 2 factors
+
+----------------
+
+Now we address the meat of the tax problem
+The actual tax brackets for both wealth and income
+
+-----------------
+
+Wealth tax:
+
+2 varieties: married and not
+
+
+Vermögenssteuer
+
+Grundtarif
+Verheiratetentarif
+
+-------------------
+
+The data is hidden inside text data here (aka a PDF):
+
+
+linux> evince -i 24 ../official\ docs/631.1_8.6.97_127.pdf &
+
+#
+# Manual scrape
+# Kopieren/ hinfügen
+#
+
+#
+# Let us now "data munge"
+#
+# https://en.wikipedia.org/wiki/Data_wrangling
+#
+# "Data wrangling, sometimes referred to as data munging, is the process of transforming and mapping 
+# data from one "raw" data form into another format with the intent of making it more appropriate and # valuable for a variety of downstream purposes such as analytics."
+# 
+
+#
+# Make selection then copy/paste into a simple text file "tmp"
+#
+
+#
+# § 47. 1 Die Vermögenssteuer beträgt (Grundtarif):109
+#
+
+rm -f tmp
+cat >> tmp << EOF
+0‰
+für die ersten
+Fr.
+80 000
+½‰ für die weiteren
+Fr. 238 000
+1‰
+für die weiteren
+Fr. 399 000
+1½‰ für die weiteren
+Fr. 636 000
+2‰
+für die weiteren
+Fr. 956 000
+2½‰ für die weiteren
+Fr. 953 000
+3‰
+für Vermögensteile über
+Fr. 3 262 000
+EOF
+
+#
+#
+# We now transform this text into usable data:
+#
+#
+
+
+cat tmp | grep "‰"
+0‰
+½‰ für die weiteren
+1‰
+1½‰ für die weiteren
+2‰
+2½‰ für die weiteren
+3‰
+
+#
+# The pattern is simple to detect
+# Safer to generate it ourselves
+# once we understand the algorithm they are using
+#
+
+linux> seq 0 0.0005 0.003
+0.0000
+0.0005
+0.0010
+0.0015
+0.0020
+0.0025
+0.0030
+linux> cat marginal-rates | nl -ba
+     1	0.0000
+     2	0.0005
+     3	0.0010
+     4	0.0015
+     5	0.0020
+     6	0.0025
+     7	0.0030
+#
+#
+# 7 intervals in the wealth tax fence
+# (7+1) = 8
+# 8 posts in the fence
+# To figure out below
+#
+#
+seq 0 0.0005 0.003 > marginal-rates
+#
+#
+
+linux> cat tmp | grep Fr | cut -c5- | tr -d " "
+
+238000
+399000
+636000
+956000
+953000
+3262000
+
+#
+#
+# All deltas. Except the last record
+# 80000 missed
+#
+#
+
+#
+#
+# So we add it in semi-manually
+# "2i" == insert before Record 2
+# "1d" == delete Record 1
+# "$d" == delete last record
+#
+#
+
+linux> cat tmp | grep Fr | cut -c5- | tr -d " " | sed '2i 80000' | sed '1d' | sed '$d'
+80000
+238000
+399000
+636000
+956000
+953000
+
+#
+#
+# The above are pure deltas. Not "posts" in the fence analogy
+#
+#
+
+cat tmp | grep Fr | cut -c5- | tr -d " " | sed '2i 80000' | sed '1d' | sed '$d' > deltas
+
+linux> cat deltas | nl -ba
+     1	80000
+     2	238000
+     3	399000
+     4	636000
+     5	956000
+     6	953000
+#
+# 6 fence post intervals...
+#
+linux> cat deltas | awk '{ sum += $1; print sum }' | nl -ba
+     1	80000
+     2	318000
+     3	717000
+     4	1353000
+     5	2309000
+     6	3262000
+#
+#
+# Transform those delta values programmatically into proper data
+#
+# Mathematically:
+#
+# sigma ((i=0..m) (x[i])) for all m
+# =
+# sum ((i=0..m) (x[i]))
+
+linux> cat deltas | awk '{ sum += $1; print sum }' | sed '$a 999999999' | nl -ba
+     1	80000
+     2	318000
+     3	717000
+     4	1353000
+     5	2309000
+     6	3262000
+     7	999999999
+#
+#
+# 7 fence posts
+# 8 in total. 0 is the implicit first post (7+1) posts in total
+#
+cat deltas | awk '{ sum += $1; print sum }' | sed '$a 999999999' > bounds
+	
+paste -d " " marginal-rates bounds | nl -ba | sed 's/^/# /g'
+#      1	0.0000 80000
+#      2	0.0005 318000
+#      3	0.0010 717000
+#      4	0.0015 1353000
+#      5	0.0020 2309000
+#      6	0.0025 3262000
+#      7	0.0030 999999999
+#
+# 7 slices or tax brackets
+#
+paste -d " " marginal-rates bounds >  ../dat/Kanton-ZH-VermögenssteuerTarife-Grundtarif
+#
+#
+# We now have our data
+# We can begin to do actual useful work
+#
+#
+#
+# https://neho.ch/de/blog/vermogenssteuer-zurich
+#
+
+Jahr=2024
+Kantonsteuerfuss=98
+Gemeinde="Zürich"
+Gemeindesteuerfuss=`grep $Gemeinde ../dat/Gemeindesteuerfüsse-$Jahr | cut -d " " -f2`
+GesamtMultiplikator=`units -t " ($Gemeindesteuerfuss+$Kantonsteuerfuss)/100"`
+printf "#\n# %20s %5g %5g %5g %5g\n#\n" $Gemeinde $Jahr $Gemeindesteuerfuss $Kantonsteuerfuss $GesamtMultiplikator | tr -s " "
+#
+for V in `seq 250000 250000 4000000`
+	do
+	BaseTax=`./calc-tax ../dat/Kanton-ZH-VermögenssteuerTarife-Grundtarif $V`
+	FinalTax=`units -t "$GesamtMultiplikator * $BaseTax"`
+	AverageRate=`units -t "$FinalTax / $V"`
+	printf "# %20s%5g%8.f%8.f%5.2f%8.f%10.6f\n" $Gemeinde $Jahr $V $BaseTax $GesamtMultiplikator $FinalTax $AverageRate
+	done
+#
+# Zürich 2024 119 98 2.17
+#
+#              Zürich 2024  250000      85 2.17     184  0.000738
+#              Zürich 2024  500000     301 2.17     653  0.001306
+#              Zürich 2024  750000     568 2.17    1233  0.001643
+#              Zürich 2024 1000000     942 2.17    2044  0.002044
+#              Zürich 2024 1250000    1318 2.17    2860  0.002288
+#              Zürich 2024 1500000    1766 2.17    3832  0.002555
+#              Zürich 2024 1750000    2266 2.17    4917  0.002810
+#              Zürich 2024 2000000    2766 2.17    6002  0.003001
+#              Zürich 2024 2250000    3266 2.17    7087  0.003150
+#              Zürich 2024 2500000    3862 2.17    8381  0.003352
+#              Zürich 2024 2750000    4486 2.17    9735  0.003540
+#              Zürich 2024 3000000    5112 2.17   11093  0.003698
+#              Zürich 2024 3250000    5736 2.17   12447  0.003830
+#              Zürich 2024 3500000    6480 2.17   14062  0.004018
+#              Zürich 2024 3750000    7230 2.17   15689  0.004184
+#              Zürich 2024 4000000    7980 2.17   17317  0.004329
+#
+cat ../dat/Kanton-ZH-VermögenssteuerTarife-Grundtarif | nl -ba | sed 's/^/# /1'
+#      1	0.0000 80000
+#      2	0.0005 318000
+#      3	0.0010 717000
+#      4	0.0015 1353000
+#      5	0.0020 2309000
+#      6	0.0025 3262000
+#      7	0.0030 999999999
+
+# Isch guet
+#
+#
+# The above completes out work for Job 1
+# There are still data creation 3 jobs to do:
+#
+linux> ls -ngtrh | tail -4
+-rw-rw-r-- 1 1000  13K Dez  7 12:09 Notizen-Kanton-ZH-VermögenssteuerTarife-Grundtarif
+-rw-rw-r-- 1 1000  13K Dez  7 12:09 Notizen-Kanton-ZH-VermögenssteuerTarife-Verheiratetentarif
+-rw-rw-r-- 1 1000  13K Dez  7 12:10 Notizen-Kanton-ZH-Einkommenssteuer-Grundtarif
+-rw-rw-r-- 1 1000  13K Dez  7 12:11 Notizen-Kanton-ZH-Einkommenssteuer-Verheiratetentarif
+
+# Fertig
+date +"%T %e %b %Y DoY %j Week %V %a %A %::z" | sed 's/^/# /1'
+# 15:37:16  7 Dez 2025 DoY 341 Week 49 So Sonntag +01:00:00
+
+
