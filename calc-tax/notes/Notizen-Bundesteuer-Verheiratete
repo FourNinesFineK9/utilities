@@ -1,0 +1,127 @@
+
+cp ./"Notizen-Bundesteuer-Verheiratete" .."/backup/Notizen-Bundesteuer-Verheiratete"-`date -u +"%Y-%m-%d-T%T-%Z"`
+
+#
+# Compare final result against:
+#
+# https://www.moneyland.ch/de/direkte-bundessteuer-rechner
+#
+---------------------------
+
+Jump discontinuity
+https://en.wikipedia.org/wiki/Classification_of_discontinuities
+https://de.wikipedia.org/wiki/Y-Achsenabschnitt
+
+------------------------------
+
+#
+# From their PDF
+#
+Intercept=25.00
+
+NameOfDataFile="../dat/Tabelle-Einkommen-Bundesteuer-Verheiratete" 
+
+rm -f tmp
+cat >> tmp << EOF
+# Arbeitsdatei:
+#
+# Tabelle für die Berechnung der direkten Bundessteuer
+# Tabelle-Einkommen-Bundesteuer-Verheiratete
+# Quelle:
+# https://www.estv.admin.ch/estv/de/home/direkte-bundessteuer/dbst-steuertarife.html
+# 2024
+#
+# Halbmanuell eingetippt
+#
+# seq 1 13 | sed '$a 11.5'
+# seq 1 13 | sed '$a 11.5' | sed 's/$/\t\t/g'
+0       30600
+1		52700
+2		60500
+3		78100
+4		93600
+5		107200
+6		119000
+7		128800
+8		136600
+9		142300
+10		146300
+11		148300
+12		150300
+13		928600
+11.5	950000
+11.5	999999999
+EOF
+
+#
+# Vorsicht
+#
+cp tmp Tabelle-Einkommen-Bundesteuer-Verheiratete-tmp
+cat Tabelle-Einkommen-Bundesteuer-Verheiratete-tmp | grep -v "^#" | sed '/^$/d' | expand -1 | tr -s " " > tmp2 
+
+#
+# Convert from percentages to decimal
+#
+while read x; do r=`echo $x | cut -d " " -f1`; units -t " $r /100"; done < tmp2 > marginal-rates
+#
+cat tmp2 | cut -d " " -f2 > data
+#
+
+paste -d " " marginal-rates data > $NameOfDataFile
+
+#
+#
+# Test run
+#
+#
+Intercept=25.00
+NameOfDataFile="../dat/Tabelle-Einkommen-Bundesteuer-Verheiratete"
+for Y in `seq 100000 100000 1000000`
+	do
+	FinalTax=`./calc-tax $NameOfDataFile $Y`
+	FinalTax=`units -t "$FinalTax + $Intercept"`
+	if [ $Y -gt 0 ]; then
+		AverageRate=`units -t "$FinalTax / $Y"`
+		printf "# %8.f%8.f%10.5f\n" $Y $FinalTax $AverageRate
+	fi
+	done
+printf "# Initial intercept added (/D: y-Achsenabschnitt ): %10.5f\n" $Intercept
+cat $NameOfDataFile | nl -ba | sed 's/^/# /1'
+date +"%T %e %b %Y DoY %j Week %V %a %A %::z" | sed 's/^/# /1'
+
+#   100000    1870   0.01870
+#   200000   12082   0.06041
+#   300000   25082   0.08361
+#   400000   38082   0.09521
+#   500000   51082   0.10216
+#   600000   64082   0.10680
+#   700000   77082   0.11012
+#   800000   90082   0.11260
+#   900000  103082   0.11454
+#  1000000  115011   0.11501
+# Initial intercept added (/D: y-Achsenabschnitt ):   25.00000
+#      1	0 30600
+#      2	0.01 52700
+#      3	0.02 60500
+#      4	0.03 78100
+#      5	0.04 93600
+#      6	0.05 107200
+#      7	0.06 119000
+#      8	0.07 128800
+#      9	0.08 136600
+#     10	0.09 142300
+#     11	0.1 146300
+#     12	0.11 148300
+#     13	0.12 150300
+#     14	0.13 928600
+#     15	0.115 950000
+#     16	0.115 999999999
+
+#
+# https://www.moneyland.ch/de/direkte-bundessteuer-rechner
+# Matches <= CHF 12 
+# https://www.estv.admin.ch/estv/de/home/direkte-bundessteuer/dbst-steuertarife.html 
+#
+
+history | cut -c8-
+

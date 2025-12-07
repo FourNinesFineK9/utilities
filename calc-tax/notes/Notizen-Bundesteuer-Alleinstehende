@@ -1,0 +1,133 @@
+
+cp ./"Notizen-Bundesteuer-Alleinstehende" .."/backup/Notizen-Bundesteuer-Alleinstehende"-`date -u +"%Y-%m-%d-T%T-%Z"`
+
+#
+#
+# https://www.moneyland.ch/de/direkte-bundessteuer-rechner
+#
+#
+---------------------------
+
+cp Tabelle-Einkommen-Bundesteuer-Alleinstehende Tabelle-Einkommen-Bundesteuer-Verheiratete
+
+Jump discontinuity
+https://en.wikipedia.org/wiki/Classification_of_discontinuities
+
+marginal rate
+0 - 18300 - 1 = 0
+18300 0.0013885246
+32900 0.0077
+
+Cut the Gordian Knot:
+Treat the initial point as the intercept on the tax axis
+Add it to result at end
+
+Intercept=25.41
+NameOfDataFile="../dat/Tabelle-Einkommen-Bundesteuer-Alleinstehende" 
+
+linux> for x in `seq 18300 100 32900` ;do printf "%-10g" $x; units -o "%.4f" -t "25.41 + ($x - 18300) * 0.0077"; done | head -8
+18300     25.4100
+18400     26.1800
+18500     26.9500
+18600     27.7200
+18700     28.4900
+18800     29.2600
+18900     30.0300
+19000     30.8000
+linux> units -t "25.41 / 18300" 
+0.0013885246
+linux> 
+
+Very strange
+Best way to proceed?
+Work my usual
+Then at the end add 25.41
+Duh
+
+
+linux> cat Tabelle-Einkommen-Bundesteuer-Alleinstehende 
+# Tabelle für die Berechnung der direkten Bundessteuer
+# Quelle:
+# 2024
+# https://www.estv.admin.ch/estv/de/home/direkte-bundessteuer/dbst-steuertarife.html
+#
+# Manuell eingetippt
+#
+0.77    32900
+0.88    43000
+2.64    57300
+2.97    75300
+5.94    81100
+6.60    107500
+8.80    139700
+11.00   182700
+13.20   783300
+11.50   950000
+
+cat Tabelle-Einkommen-Bundesteuer-Alleinstehende | grep -v "^#" | sed '/^$/d' > tmp
+
+#
+# Replace tabs and excessive space characters
+#
+expand -1 tmp | tr -s " " > tmp2
+#
+# Plain percentages
+#
+while read x; do r=`echo $x | cut -d " " -f1`; units -t " $r /100"; done < tmp2 > marginal-rates
+#
+cat tmp2 | cut -d " " -f2 > data
+# paste -d " " marginal-rates data | sed '$a 0.115 999999999'
+paste -d " " marginal-rates data | sed '$a 0.115 999999999' > $NameOfDataFile
+
+#
+# Test run
+#
+#
+Intercept=25.41
+NameOfDataFile="../dat/Tabelle-Einkommen-Bundesteuer-Alleinstehende"
+for Y in `seq 100000 100000 1000000`
+	do
+	FinalTax=`./calc-tax $NameOfDataFile $Y`
+	FinalTax=`units -t "$FinalTax + $Intercept"`
+	if [ $Y -gt 0 ]; then
+		AverageRate=`units -t "$FinalTax / $Y"`
+		printf "# %8.f%8.f%10.5f\n" $Y $FinalTax $AverageRate
+	fi
+	done
+printf "# Initial intercept added (/D: y-Achsenabschnitt ): %10.5f\n" $Intercept
+cat $NameOfDataFile | nl -ba | sed 's/^/# /1'
+#   100000    2736   0.02736
+#   200000   13085   0.06543
+#   300000   26285   0.08762
+#   400000   39485   0.09871
+#   500000   52685   0.10537
+#   600000   65885   0.10981
+#   700000   79085   0.11298
+#   800000   91999   0.11500
+#   900000  103499   0.11500
+#  1000000  114999   0.11500
+# Initial intercept added (/D: y-Achsenabschnitt ):   25.41000
+#      1	0 18301
+#      2	0.0077 32800
+#      3	0.0088 42900
+#      4	0.0264 57200
+#      5	0.0297 75200
+#      6	0.0594 81000
+#      7	0.066 107400
+#      8	0.088 139600
+#      9	0.11 182600
+#     10	0.132 783200
+#     11	0.115 950000
+#     12	0.115 999999999
+
+#
+# Matches 
+# https://www.moneyland.ch/de/direkte-bundessteuer-rechner
+# within <= 1 CHF
+# Thus I have probably figured it out
+# and *** vastly simplified *** Bern's data presentation
+# https://www.estv.admin.ch/estv/de/home/direkte-bundessteuer/dbst-steuertarife.html 
+#
+
+history | cut -c8-
+
