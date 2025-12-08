@@ -1,0 +1,465 @@
+-----------
+
+Vaud
+Impôts 
+Revenu
+2025 ?
+
+-----------
+
+Input
+------
+
+cp ./"Notes-revenu-VD-2025" .."/backup/Notes-revenu-VD-2025"-`date -u +"%Y-%m-%d-T%T-%Z"`
+
+wget https://www.vd.ch/fileadmin/user_upload/organisation/dfin/aci/fichiers_pdf/bar%C3%A8me_revenu_2025.pdf
+evince barème_revenu_2025.pdf &
+
+wget https://www.vd.ch/fileadmin/user_upload/themes/territoire/communes/finances_communales/Arr%C3%AAt%C3%A9s_d_imposition_2025-mis_%C3%A0_jour_apr%C3%A8s_r%C3%A9f%C3%A9rendum.xls
+
+#
+# Pour les coeffs:
+#
+ssconvert Arrêtés_d_imposition_2025-mis_à_jour_après_référendum.xls Arrêtés_d_imposition_2025-mis_à_jour_après_référendum.csv
+
+#
+# Tuyaux pour inspiration:
+#
+linux> cat ../documents\ officiels/Arrêtés_d_imposition_2025-mis_à_jour_après_référendum.csv | grep ^Lausanne | awk -F, '{printf "%-20s\t%.2f\n", $1, $6}'
+Lausanne            	78.50
+
+-----------
+
+Output
+------
+
+NameOfDataFile="../dat/barème_revenu_2025-taux-marginaux"
+
+
+-----------
+
+https://www.vd.ch/fileadmin/user_upload/organisation/dfin/aci/fichiers_pdf/bar%C3%A8me_revenu_2025.pdf
+
+#
+# By inspection + induction (trial and error)
+#
+
+They give average rates
+So we must work out the deltas
+to find the marginal rates
+
+They first move in step of 1%
+
+Then 0.5 %
+
+Lets' see...
+
+seq 0.01 0.01 0.12 > marginal-rates
+seq 0.125 0.005 0.155 >> marginal-rates
+cat marginal-rates | nl -ba
+history | cut -c8-
+
+cat marginal-rates | nl -ba
+     1	0.01
+     2	0.02
+     3	0.03
+     4	0.04
+     5	0.05
+     6	0.06
+     7	0.07
+     8	0.08
+     9	0.09
+    10	0.10
+    11	0.11
+    12	0.12
+    13	0.125
+    14	0.130
+    15	0.135
+    16	0.140
+    17	0.145
+    18	0.150
+    19	0.155
+
+Exactement !
+
+cat marginal-rates | sed 's/$/\t\t/g' > tmp
+
+# cat tmp | sed '13d'
+# cat tmp | sed '13d' > tmp2
+
+
+Quantity of data
+-----------------
+In total we are dealing with:
+linux> cat marginal-rates | wc -l
+19
+
+19 bounds to identify
+
+inside a PDF
+
+linux> pdfinfo ../documents\ officiels/barème_revenu_2025.pdf | grep Pages
+Pages:           31
+
+of 31 pages
+
+A PDF is basically a book of photographs of number. Particularly when ordered in column pairs.
+
+pdftotext is of no help (I tried)
+
+To turn those 31 pages of pictures into DATA, we need to graft.
+
+
+linux> seq 100 100 300000 | wc -l
+3000
+
+3000 average rates to simplify into marginal rates somehow
+
+---------------------------
+
+linux> echo $NameOfDataFile 
+../dat/barème_revenu_2025-taux-marginaux
+linux> cat $NameOfDataFile 
+0.01 1600
+0.02 3400
+0.03 5100
+0.04 8300
+0.05 11900
+0.06 15100
+0.07 23600
+0.08 40500
+0.09 57200
+0.10 74300
+0.11 91100
+0.12 108000
+0.125 134900
+0.130 161900
+0.135 192300
+0.140 222800
+0.145 255800
+0.150 291400
+0.155 999999999
+linux> cat $NameOfDataFile | wc -l
+19
+
+
+These rates give:
+
+delta (Tax) / delta (income)
+ie
+( Tax [i] - Tax [i-1] ) / ( Income [i] - Income [i-1] ) for i = 1...3000
+
+#
+# Edit that tmp3 file
+# Adding what I hope are the correct bounds in column 2
+# Tedious work:
+# 1 CHF delta, 2, ..., 12
+# Then even more tedious (but kind of fun)
+# For the half steps (delta = 0.005), look for changes from even to odd 
+#
+# Command line help:
+#
+
+Worked example towards the end of the data page 30
+
+linux> evince -i 30 ../documents\ officiels/barème_revenu_2025.pdf &
+
+#
+# To aid the fishing process:
+#
+
+35'010.50
+echo "35'010.50" | tr -d "'"
+base=`echo "35'010.50" | tr -d "'"`
+for i in `seq 0.125 0.005 0.155`; do printf "%-10.2f %-10.4f" $base $i; units -t -o "%.2f" "$base + 100 * $i"; done
+
+35010.50   0.1250    35023.00
+35010.50   0.1300    35023.50
+35010.50   0.1350    35024.00
+35010.50   0.1400    35024.50
+35010.50   0.1450    35025.00
+35010.50   0.1500    35025.50
+35010.50   0.1550    35026.00
+
+"base" is basically
+Tax [i-1]
+higher up
+
+We are looking for a match in Column 3 above
+
+35026.00
+Bingo
+hence
+291'400
+echo "291'400" | tr -d "'"
+291400
+is the bound for the *marginal rate*
+0.1500
+
+In full:
+
+echo "34'995.50" | tr -d "'"
+34995.50
+
+units -t -o "%.4f" " (35026.00 - 34995.50) / 100 / (291400 + 100)"
+
+linux> units -t -o "%.4f" " (35041.50 - 35026.00) / (291600 - 291500)"
+0.1550
+linux> units -t -o "%.4f" " (0.1550 * 100 ) + 35026.00"
+35041.5000
+
+cat tmp2 | expand -1 | tr -s " " > tmp3
+cat tmp3 | nl -ba
+     1	0.01 1600
+     2	0.02 3400
+     3	0.03 5000
+     4	0.04 8300
+     5	0.05 11900
+     6	0.06 15000
+     7	0.07 23600
+     8	0.08 40500
+     9	0.09 57200
+    10	0.10 74300
+    11	0.11 91200
+    12	0.12 108000
+    13	0.125 134900
+    14	0.130 161900
+    15	0.135 192300
+    16	0.140 222800
+    17	0.145 255900
+    18	0.150 291500
+    19	0.155 999999999
+
+# 
+# After rigorous testing against their own table, I edited nearly a half dozen of my mistakes
+# Off by 100 typically
+#
+cat tmp2 | expand -1 | tr -s " " > tmp3
+cat tmp3 | nl -ba
+     1	0.01 1600
+     2	0.02 3400
+     3	0.03 5100
+     4	0.04 8300
+     5	0.05 11900
+     6	0.06 15100
+     7	0.07 23600
+     8	0.08 40500
+     9	0.09 57200
+    10	0.10 74300
+    11	0.11 91100
+    12	0.12 108000
+    13	0.125 134900
+    14	0.130 161900
+    15	0.135 192300
+    16	0.140 222800
+    17	0.145 255800
+    18	0.150 291400
+    19	0.155 999999999
+
+# WRONG
+# but useful technique. So keep the code for another day
+#
+# I may be 100 too high on each bound
+# Correct it
+#
+# tweak_amount=100
+# cat tmp3 | cut -d " " -f2 | awk -v delta=$tweak_amount '{ tweaked = $1 - delta; print tweaked }'
+
+#
+# As a sanity check...
+#
+# What are their deltas ?
+#
+cat tmp2 | expand -1 | tr -s " " > tmp3
+cat tmp3 | cut -d " " -f2 | awk '{ difference = $1 - last; print difference; last = $1; next }' | nl -ba
+
+     1	1600
+     2	1800
+     3	1700
+     4	3200
+     5	3600
+     6	3200
+     7	8500
+     8	16900
+     9	16700
+    10	17100
+    11	16800
+    12	16900
+    13	26900
+    14	27000
+    15	30400
+    16	30500
+    17	33000
+    18	35600
+    19	999708599
+
+Could be...
+No particular shape nor form
+
+NameOfDataFile="../dat/barème_revenu_2025-taux-marginaux"
+cat tmp2 | expand -1 | tr -s " " > tmp3
+cp tmp3 $NameOfDataFile
+
+#
+# Quick test
+#
+'../../ZH Steuern 2024/wip/calc-tax-2' $NameOfDataFile 100000
+8679.00
+#
+# Joli, joli
+#
+
+#
+# Vérif supplémentaire avec leur exemple de la page 31 (dernière page)
+#
+rm -f tmp
+cat >> tmp << EOF
+427'900
+EOF
+linux> while read x; do echo " $x "  | tr -d "'" | tr -d " " ; done < tmp
+427900
+
+'../../ZH Steuern 2024/wip/calc-tax-2' $NameOfDataFile 427900 
+56168.00
+#
+# Ça joue !
+#
+
+#
+# Pour la blague générons leur table de taux moyens de 30+ pages en 7 lignes !
+#
+NameOfDataFile="../dat/barème_revenu_2025-taux-marginaux"
+for y in `seq 100 100 300000`
+	do
+	base=`../../"ZH Steuern 2024"/wip/calc-tax-2 $NameOfDataFile $y`
+	taux_moyen=`units -t " $base / $y " percent`
+	printf "%6.f%10.2f%10.3f\n" $y $base $taux_moyen
+	done  ../dat/Vaud_Bareme_de_l_impot_sur_le_revenu_2025_ecrit_par_calc_tax_2
+
+#
+# Je triche car pressé.
+# Un jour il faudrait aller chercher le coéfficient dans le CSV (pas difficle)
+#
+# linux> cat ../documents\ officiels/Arrêtés_d_imposition_2025-mis_à_jour_après_référendum.csv | grep  ^Lausanne | awk -F, '{printf "%-20s\t%.2f\n", $1, $6}'
+#
+
+# NameOfDataFile=corrected-marginals-with-bounds
+
+NameOfDataFile="../dat/barème_revenu_2025-taux-marginaux"
+Annee=2025
+Coefficient_cantonal=155
+Commune="Lausanne"
+Coefficient_communal=78.50
+
+Coefficient_total=`units -t " ($Coefficient_cantonal+$Coefficient_communal)/100"`
+printf "#\n# %20s %5g %5g %5g %5.4f\n#\n" $Commune $Annee $Coefficient_communal $Coefficient_cantonal $Coefficient_total | tr -s " "
+#
+for Y in `seq 50000 25000 200000`
+	do
+	BaseTax=`'../../ZH Steuern 2024/wip/calc-tax-2' $NameOfDataFile $Y`
+	FinalTax=`units -t "$Coefficient_total * $BaseTax"`
+	AverageBaseRate=`units -t "$BaseTax / $Y"`
+	AverageRate=`units -t "$FinalTax / $Y"`
+	printf "# %20s%5g%8.f%8.f%10.5f%10.4f%8.f%10.5f\n" $Commune $Annee $Y $BaseTax $AverageBaseRate $Coefficient_total $FinalTax $AverageRate
+	done
+printf "#\n# Taux marginal + limite supérieure de la tranche\n#\n"
+cat $NameOfDataFile | nl -ba | sed 's/^/# /g'
+
+#
+# Lausanne 2025 78.5 155 2.3350
+#
+#             Lausanne 2025   50000    3405   0.06810    2.3350    7951   0.15901
+#             Lausanne 2025   75000    5840   0.07787    2.3350   13636   0.18182
+#             Lausanne 2025  100000    8679   0.08679    2.3350   20265   0.20265
+#             Lausanne 2025  125000   11764   0.09411    2.3350   27469   0.21975
+#             Lausanne 2025  150000   14964   0.09976    2.3350   34942   0.23295
+#             Lausanne 2025  175000   18280   0.10446    2.3350   42684   0.24391
+#             Lausanne 2025  200000   21694   0.10847    2.3350   50654   0.25327
+#
+# Taux marginal + limite supérieure de la tranche
+#
+#      1	0.01 1600
+#      2	0.02 3400
+#      3	0.03 5100
+#      4	0.04 8300
+#      5	0.05 11900
+#      6	0.06 15100
+#      7	0.07 23600
+#      8	0.08 40500
+#      9	0.09 57200
+#     10	0.10 74300
+#     11	0.11 91100
+#     12	0.12 108000
+#     13	0.125 134900
+#     14	0.130 161900
+#     15	0.135 192300
+#     16	0.140 222800
+#     17	0.145 255800
+#     18	0.150 291400
+#     19	0.155 999999999
+
+-------------------
+
+Vérifs contre leur page Web:
+https://www.vd.ch/etat-droit-finances/impots/impots-pour-les-individus/calculer-mes-impots#h2_vd_calculette_resultats
+
+Merci à
+https://fbk-conseils.ch/calcul-impot-revenu-vaud/
+pour l'idée de la réduction de 3.5%
+
+Apparemment 4.0% maintenant
+
+reduction=0.04 
+
+50K CHF revenu
+0 CHF pour le reste
+
+calcul_manuel=3405
+units -o "%.2f" -t " $calcul_manuel * (155/100 * (1 - $reduction))"
+units -o "%.2f" -t "$calcul_manuel * (155/100 * (1 - $reduction) + (78.5/100) )"
+5066.64
+7739.57
+
+#
+# Eux:
+# 7'739.60
+# 
+
+75K CHF revenu
+
+calcul_manuel=5840
+units -o "%.2f" -t " $calcul_manuel * (155/100 * (1 - $reduction))"
+units -o "%.2f" -t "$calcul_manuel * (155/100 * (1 - $reduction) + (78.5/100) )"
+8689.92
+13274.32
+
+...
+
+200 K CHF revenu
+
+calcul_manuel=21694
+units -o "%.2f" -t " $calcul_manuel * (155/100 * (1 - $reduction))"
+units -o "%.2f" -t "$calcul_manuel * (155/100 * (1 - $reduction) + (78.5/100) )"
+32280.67
+49310.46
+
+
+
+------------------------
+On télécharge vers github
+
+Fertig, Schluss
+
+Bla bla pour un Tweet:
+------------------------
+
+Calcul des impôts cantonaux et communaux (ICC)
+
+Canton: VD
+Commune: Lausanne
+
+#IncomeTax
+
+A 31 page PDF with 3000 average rate records simplified to 19 lines of actual DATA
+
+
