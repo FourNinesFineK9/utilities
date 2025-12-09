@@ -1,0 +1,882 @@
+-------------------------------------------------------------------
+
+linux> date +"%T %e %b %Y DoY %j Week %V %a %A %::z" | sed 's/^/# /1'
+# 17:31:10  9 Dez 2025 DoY 343 Week 50 Di Dienstag +01:00:00
+
+Calcul des impôts cantonaux et communaux (ICC)
+
+Canton: VD (Vaud)
+Commune: Lausanne
+#Impôtsurlafortune
+#WealthTax 
+
+A 20 page PDF file converted to 1951 records of average tax rates (ATR)
+==
+actual DATA🤓
+
+https://x.com/FourNinesFineK9/status/1998118981920768347?s=20
+
+linux> pdfinfo ../documents\ officiels/barème_fortune_2025.pdf | grep Pages
+Pages:           20
+
+-------------------------------------------------------------------
+
+PS1="linux> "; echo -en "\033]0;Vaud travaux d'exploration\a";
+
+cp ./"Notes-fortune-VD-2025" .."/backup/Notes-fortune-VD-2025"-`date -u +"%Y-%m-%d-T%T-%Z"`
+
+wget https://www.vd.ch/fileadmin/user_upload/organisation/dfin/aci/fichiers_pdf/bar%C3%A8me_fortune_2025.pdf
+
+evince barème_fortune_2025.pdf &
+
+
+---------
+
+wget https://www.vd.ch/fileadmin/user_upload/themes/territoire/communes/finances_communales/Arr%C3%AAt%C3%A9s_d_imposition_2025-mis_%C3%A0_jour_apr%C3%A8s_r%C3%A9f%C3%A9rendum.xls
+
+#
+# Pour les coeffs:
+#
+ssconvert Arrêtés_d_imposition_2025-mis_à_jour_après_référendum.xls Arrêtés_d_imposition_2025-mis_à_jour_après_référendum.csv
+
+cat ../documents\ officiels/Arrêtés_d_imposition_2025-mis_à_jour_après_référendum.csv | grep ^Lausanne | awk -F, '{printf "%-20s\t%.2f\n", $1, $6}'
+Lausanne            	78.50
+
+cat ../documents\ officiels/Arrêtés_d_imposition_2025-mis_à_jour_après_référendum.csv | awk -F, '{printf "%-20s\t%.2f\n", $1, $6}' | more
+
+#
+# Au marteau-piqeur sans trop réfléchir:
+#
+cat ../documents\ officiels/Arrêtés_d_imposition_2025-mis_à_jour_après_référendum.csv | awk -F, '{printf "%-20s\t%.2f\n", $1, $6}' | grep "^[A-Z]" | sort | expand -1 | tr -s " " | more
+
+cat ../documents\ officiels/Arrêtés_d_imposition_2025-mis_à_jour_après_référendum.csv | awk -F, '{printf "%-20s\t%.2f\n", $1, $6}' | grep "^[A-Z]" | sort | expand -1 | tr -s " " > coefficients-communes-2025
+
+#
+# En se donnant un peu plus de peine. aïaut aïaut
+#
+# Narcisse jaune 
+# j'savais pas
+# https://fr.wiktionary.org/wiki/a%C3%AFaut
+#
+
+cat ../documents\ officiels/Arrêtés_d_imposition_2025-mis_à_jour_après_référendum.csv | sed '1,6d' | head -n -4  | awk -F, '{printf "%-20s\t%.2f\n", $1, $6}' | sort | tr -d '"' | expand -1 | tr -s " " | tr -d "*" > coefficients-communes-2025 
+cp coefficients-communes-2025 ../dat/
+
+-------------------------------------------------------------------
+
+!!! WEIRD !!!
+
+What follows is going to be the most outrageous demonstration of data munging ever.
+I did not plan it this way.
+It just happened as I played with the material. Hands-on.
+
+If only the administrators/ politicians released data as actual text files, it would save a lot of trouble.
+
+-----------------
+
+Heuristic:
+Convert the PDF into a txt file
+The data is now all over the place because of the PDF cosmetic columns
+PDFs are basically photographs of numbers. Not data
+
+Convert all thousands separators to blank
+Extract out numbers only
+Sort the lot
+Extract out numbers only between a certain range
+Sort them
+
+Reconstruct the tax table
+
+lol !
+
+https://fr.wikipedia.org/wiki/S%C3%A9parateur_d%C3%A9cimal_et_s%C3%A9parateur_de_milliers
+
+------------------------------------------------------------------- 
+A quick sidetrack:
+
+A different method !
+
+linux> less ../documents\ officiels/barème_fortune_2025.pdf | nl -ba | tail -60q
+linux> less ../documents\ officiels/barème_fortune_2025.pdf | cut -c75-90 | more
+linux> less ../documents\ officiels/barème_fortune_2025.pdf | nl -ba | tail -60
+
+etc...
+Pour une autre fois
+
+------------------------------------------------------------------- 
+
+pdftotext
+
+linux> pdftotext -v
+pdftotext version 24.02.0
+Copyright 2005-2024 The Poppler Developers - http://poppler.freedesktop.org
+Copyright 1996-2011, 2022 Glyph & Cog, LLC
+
+linux> dpkg --list | grep -i poppler-utils
+ii  poppler-utils                                    24.02.0-1ubuntu9.8                          amd64        PDF utilities (based on Poppler)
+
+------------------------------------------------------------------- 
+
+linux> pdftotext ../documents\ officiels/barème_fortune_2025.pdf
+linux> ls -ngtr ../documents\ officiels/barème_fortune_2025.*
+-rw-rw-r-- 1 1000 230268 Dez  7 23:07 '../documents officiels/barème_fortune_2025.pdf'
+-rw-rw-r-- 1 1000  49927 Dez  9 00:00 '../documents officiels/barème_fortune_2025.txt'
+
+linux> seq 50000 1000 2000000 | wc -l
+1951
+average tax records
+
+with very bizarre marginal steps for every 1000 chunk/ slab/ slice/ bracket
+
+#
+# Just had a mad idea.............
+# aka A Moment Of Inspiration (lol)
+#
+
+linux> cat ../dat/doc   grep "^[1-9]"
+linux> cat ../documents\ officiels/barème_fortune_2025.txt | grep "^[1-9]" | tr -d "'" | sort -g | more
+
+cat ../documents\ officiels/barème_fortune_2025.txt | grep "^[1-9]" | tr -d "'" | sort -g > FousYTout
+
+linux> wc -l FousYTout 
+5772 FousYTout
+
+linux> qalc -t "5772 / 3"
+1924
+Possible
+
+#
+# "FousYTout" contains loads a numbers
+# All jumbled up
+# pdftotext does not respect the column order
+# No matter. It has done a brilliant job converting the PDF blurb into nearlyl usable data
+#
+#
+# After careful inspection of the PDF
+# Goal:
+# To extract that second column of numbers from the TXT generated by "pdftotext"
+# These range from
+# about
+# 20
+# -
+# 6200
+#
+# A little more precisely but not exactly
+# All we're interested in is that Column 2
+# Columns 3 and 1 we can generate in 1 single bash/ units command 
+#
+
+BorneInferieure=50000
+BorneSuperieure=2000000
+
+AverageTaxRateMin=0.0004
+AverageTaxRateMax=0.0031
+
+units -t " $BorneInferieure * $AverageTaxRateMin"
+units -t " $BorneSuperieure * $AverageTaxRateMax"
+
+20
+6200
+
+TamisMin=`units -t " $BorneInferieure * $AverageTaxRateMin"`
+TamisMax=`units -t " $BorneSuperieure * $AverageTaxRateMax"`
+
+linux> echo $TamisMin 
+20
+linux> echo $TamisMax 
+6200
+
+cat lala2 | awk ' ($1 > 100) && ($1 < 1000) {print $1}' | more
+
+#
+# To pass parameters down into an awk function:
+#
+cat lala2 | awk -v m1=$TamisMin -v m2=$TamisMax ' ($1 > m1) && ($1 < m2) {print $1}' | more
+linux> cat FousYTout | awk -v m1=$TamisMin -v m2=$TamisMax ' ($1 > m1) && ($1 < m2) {print $1}' | more
+
+linux> cat FousYTout | awk -v m1=$TamisMin -v m2=$TamisMax ' ($1 > m1) && ($1 < m2) {print $1}' | head -10
+22.95
+23.90
+24.90
+25.85
+26.85
+27.80
+28.75
+29.75
+30.70
+31.70
+linux> cat FousYTout | awk -v m1=$TamisMin -v m2=$TamisMax ' ($1 > m1) && ($1 < m2) {print $1}' | tail -10
+6100.20
+6103.55
+6106.95
+6110.35
+6113.75
+6117.15
+6120.50
+6123.90
+6127.30
+6127.30
+
+#
+# Simple even pure !
+# Flippin' genius !
+
+history | cut -c8-
+
+On the last page of the PDF, they give a wonderful example
+
+2'162.80
+wonderful=`echo "2'162.80" | tr -d "'"`
+
+linux> echo $wonderful 
+2162.80
+
+------------
+From DDG AI Search Assist, copy/ paste
+------------
+if [ "$(echo "$number > $min && $number < $max" | bc)" -eq 1 ]; then
+    echo "Number is within range."
+else
+    echo "Number is out of range."
+fi
+
+#!/bin/bash
+
+MIN=10.0
+MAX=20.0
+NUMBER=15.5
+
+if [ "$(echo "$NUMBER >= $MIN && $NUMBER <= $MAX" | bc)" -eq 1 ]; then
+    echo "$NUMBER is between $MIN and $MAX"
+else
+    echo "$NUMBER is not between $MIN and $MAX"
+fi
+-------------
+
+#!/bin/bash
+
+MIN=10.0
+MAX=20.0
+NUMBER=15.5
+
+echo "$NUMBER $MIN $MAX" | awk '{if ($1 >= $2 && $1 <= $3) print $1 " is between " $2 " and " $3; else print $1 " is not between " $2 " and " $3}'
+
+------------
+Modify:
+------------
+Eh
+Don't want to tweak my numbers to ".0"
+Use awk instead
+
+number="$wonderful"
+lower_limit="$TamisMin"
+upper_limit="$TamisMax"
+
+if [ "$number" -ge "$lower_limit" ] && [ "$number" -le "$upper_limit" ]; then
+    echo "The number is within the range"
+else
+    echo "The number is outside the range"
+fi
+---------
+
+echo "$wonderful $TamisMin $TamisMax" | awk '{if ($1 >= $2 && $1 <= $3) print $1 " is between " $2 " and " $3; else print $1 " is not between " $2 " and " $3}'
+
+------------
+All this is massive overkill
+
+The question is however DILLIGAF ?
+Eh ben non
+
+The number is clearly within range and has thus been picked up in the sieve
+This is just an interesting exercise in Technique
+
+Run:
+------------
+
+BorneInferieure=50000
+BorneSuperieure=2000000
+
+AverageTaxRateMin=0.0004
+AverageTaxRateMax=0.0031
+
+TamisMin=`units -t " $BorneInferieure * $AverageTaxRateMin"`
+TamisMax=`units -t " $BorneSuperieure * $AverageTaxRateMax"`
+
+number="$wonderful"
+lower_limit="$TamisMin"
+upper_limit="$TamisMax"
+
+if [ "$number" -ge "$lower_limit" ] && [ "$number" -le "$upper_limit" ]
+then
+    echo "YES dumbass of course it did"
+else
+    echo "The number is outside the range"
+fi
+
+linux> if [ "$number" -ge "$lower_limit" ] && [ "$number" -le "$upper_limit" ]; then     echo "The number is within the range"; else     echo "The number is outside the range"; fi
+bash: [: 2162.80: integer expression expected
+The number is outside the range
+
+lol
+It insists on a float
+
+---------
+
+linux> echo "$wonderful $TamisMin $TamisMax" | awk '{if ($1 >= $2 && $1 <= $3) print $1 " is between " $2 " and " $3; else print $1 " is not between " $2 " and " $3}'
+2162.80 is between 20 and 6200
+
+Ha!
+Why live simply when you can make it complicated ?
+
+------------
+
+cat FousYTout | awk -v m1=$TamisMin -v m2=$TamisMax ' ($1 > m1) && ($1 < m2) {print $1}' > FousYTout-passe-au-tamis
+
+linux> cat FousYTout-passe-au-tamis | grep $wonderful
+2162.80
+
+We delete that specific record
+
+linux> cat FousYTout-passe-au-tamis | tail
+6100.20
+6103.55
+6106.95
+6110.35
+6113.75
+6117.15
+6120.50
+6123.90
+6127.30
+6127.30
+
+and the last duplicate
+#
+# using 2 different techniques to clean up
+#
+linux> cat FousYTout-passe-au-tamis | sed '$d' | grep -v $wonderful | wc -l
+1951
+
+cat FousYTout-passe-au-tamis | sed '$d' | grep -v $wonderful > FousYTout-clean
+
+-----------
+H/T AI
+You can use the following `awk` command to calculate the differences while skipping the first row: 
+This command processes the input file, calculates the difference between the current and previous float values, and skips the first row.
+
+```bash
+awk 'NR > 1 {print $1 - prev} {prev = $1}' input.txt
+```
+-----------
+
+cat FousYTout-clean | awk 'NR > 1 {print $1 - prev} {prev = $1}' | more
+
+linux> cat FousYTout-clean | awk 'NR > 1 {printf "%5.2f%5.2f\n", $1, $1 - prev} {prev = $1}' | head -30
+23.90 0.95
+24.90 1.00
+25.85 0.95
+26.85 1.00
+27.80 0.95
+28.75 0.95
+29.75 1.00
+30.70 0.95
+31.70 1.00
+32.65 0.95
+33.60 0.95
+34.60 1.00
+35.55 0.95
+36.55 1.00
+37.50 0.95
+38.45 0.95
+39.45 1.00
+40.40 0.95
+41.40 1.00
+42.35 0.95
+43.30 0.95
+44.30 1.00
+45.25 0.95
+46.25 1.00
+47.20 0.95
+48.15 0.95
+49.15 1.00
+50.10 0.95
+51.10 1.00
+52.05 0.95
+
+linux> cat FousYTout-clean | awk 'NR > 1 {printf "%5.2f%5.2f\n", $1, $1 - prev} {prev = $1}' | tail -30
+6029.00 3.40
+6032.40 3.40
+6035.75 3.35
+6039.15 3.40
+6042.55 3.40
+6045.95 3.40
+6049.35 3.40
+6052.70 3.35
+6056.10 3.40
+6059.50 3.40
+6062.90 3.40
+6066.30 3.40
+6069.65 3.35
+6073.05 3.40
+6076.45 3.40
+6079.85 3.40
+6083.25 3.40
+6086.60 3.35
+6090.00 3.40
+6093.40 3.40
+6096.80 3.40
+6100.20 3.40
+6103.55 3.35
+6106.95 3.40
+6110.35 3.40
+6113.75 3.40
+6117.15 3.40
+6120.50 3.35
+6123.90 3.40
+6127.30 3.40
+
+cat FousYTout-clean | awk 'NR > 1 {printf "%5.2f%5.2f\n", $1, $1 - prev} {prev = $1}' > bizarre
+
+cat bizarre | tr -s " " | sed 's/^ //g' | cut -d " " -f2 | sort -nu
+0.95
+1.00
+1.65
+1.70
+2.40
+2.45
+3.15
+3.35
+3.40
+
+cat bizarre | head -20
+linux> cat bizarre | head -20
+23.90 0.95
+24.90 1.00
+25.85 0.95
+26.85 1.00
+27.80 0.95
+28.75 0.95
+29.75 1.00
+30.70 0.95
+31.70 1.00
+32.65 0.95
+33.60 0.95
+34.60 1.00
+35.55 0.95
+36.55 1.00
+37.50 0.95
+38.45 0.95
+39.45 1.00
+40.40 0.95
+41.40 1.00
+42.35 0.95
+
+cat bizarre | more
+
+4 up
+1 down
+may be a pattern
+
+1 1
+1 2
+
+#
+# And that ladies and gentlemen is when I abandoned the idea of finding the marginal rates
+#
+
+--------------------------------------------------------------------------
+#
+# Instead, focus on the simple text table with (wealth value, average tax) 
+#
+
+linux> seq 50000 1000 2000000 | wc -l
+1951
+
+seq 50000 1000 2000000 | head -10
+linux> seq 50000 1000 2000000 | head -10
+50000
+51000
+52000
+53000
+54000
+55000
+56000
+57000
+58000
+59000
+
+linux> seq 50000 1000 2000000 > colonne-1
+linux> cat colonne-1 | wc -l
+1951
+
+linux> cat FousYTout-clean | wc -l
+1951
+
+LOVE
+
+paste -d " " colonne-1 FousYTout-clean | more
+
+linux> paste -d " " colonne-1 FousYTout-clean | tail
+1991000 6096.80
+1992000 6100.20
+1993000 6103.55
+1994000 6106.95
+1995000 6110.35
+1996000 6113.75
+1997000 6117.15
+1998000 6120.50
+1999000 6123.90
+2000000 6127.30
+
+La vie est belle
+
+paste -d " " colonne-1 FousYTout-clean > tabelle-fortune-2-colonnes
+
+linux> paste -d " " colonne-1 FousYTout-clean > tabelle-fortune-2-colonnes
+linux> cat tabelle-fortune-2-colonnes | wc -l
+1951
+
+We now have usable data
+A table we can hit
+
+Round your declarable wealth to the nearest 1000
+Hit the table
+
+Like so:
+
+declarable_wealth=100000
+cat tabelle-fortune-2-colonnes | grep "^$declarable_wealth " | cut -d " " -f2
+
+linux> cat tabelle-fortune-2-colonnes | grep "^$declarable_wealth " | cut -d " " -f2
+75.05
+
+Not bad
+but let's be sure
+
+cat tabelle-fortune-2-colonnes | awk -F " " -v hit=$declarable_wealth '($1==hit) {print $2}'  
+linux> cat tabelle-fortune-2-colonnes | awk -F " " -v hit=$declarable_wealth '($1==hit) {print $2}'
+75.05
+
+#
+# More ambitious
+#
+cp tabelle-fortune-2-colonnes ../dat/
+
+NameOfDataFile=../dat/tabelle-fortune-2-colonnes
+for W in `seq 50000 25000 200000`
+	do
+	cat $NameOfDataFile | awk -F " " -v hit=$W '($1==hit) {printf "%10.f%10.2f\n", $1, $2}'
+	done
+
+linux> NameOfDataFile=../dat/tabelle-fortune-2-colonnes
+for W in `seq 50000 25000 200000`
+        do
+        cat $NameOfDataFile | awk -F " " -v hit=$W '($1==hit) {printf "%10.f%10.2f\n", $1, $2}'
+        done
+     50000     22.95
+     75000     47.20
+    100000     75.05
+    125000    117.30
+    150000    159.55
+    175000    201.80
+    200000    260.85
+
+# 
+# Un tantinet plus...
+#
+NameOfDataFile=../dat/tabelle-fortune-2-colonnes
+for W in `seq 500000 100000 2000000`
+	do
+	cat $NameOfDataFile | awk -F " " -v hit=$W '($1==hit) {printf "%10.f%10.2f\n", $1, $2}'
+	done
+
+    500000   1092.70
+    600000   1407.70
+    700000   1722.70
+    800000   2059.30
+    900000   2398.30
+   1000000   2737.30
+   1100000   3076.30
+   1200000   3415.30
+   1300000   3754.30
+   1400000   4093.30
+   1500000   4432.30
+   1600000   4771.30
+   1700000   5110.30
+   1800000   5449.30
+   1900000   5788.30
+   2000000   6127.30
+
+#
+# Revérif' ponctuelles
+#
+NameOfDataFile=../dat/tabelle-fortune-2-colonnes
+declarable_wealth=1500000
+cat $NameOfDataFile | awk -F " " -v hit=$declarable_wealth '($1==hit) {printf "%10.f%10.2f\n", $1, $2}'
+
+linux> cat $NameOfDataFile | awk -F " " -v hit=$declarable_wealth '($1==hit) {printf "%10.f%10.2f\n", $1, $2}'
+   1500000   4432.30
+
+Très bon
+
+#
+# Les ATRs
+# J'avais oublié
+# On n'en a vraiment pas besoin
+# puisqu'on a maintenant les données de base
+# Mais juste pour montrer qu'on est adaptable (servile?)
+#
+
+NameOfDataFile=../dat/tabelle-fortune-2-colonnes
+while read x y
+	do
+	printf "%10.f%10.2f" $x $y
+	units -t -o "%10.6f" " $y / $x " 
+	done < $NameOfDataFile | tr -s " " | sed 's/^ //g' > tabelle-fortune-3-colonnes
+
+linux> cat tabelle-fortune-3-colonnes | wc -l
+1951
+
+cp tabelle-fortune-3-colonnes ../dat/
+
+--------------
+Side-track
+
+I tried quizzing AI about the udnerlying formula Vaud used
+
+Here is approximately how I formulated my initial questions:
+
+After much data wrangling, I have simplified Canton Vaud's wealth tax rates from a PDF into a series of 1951 records of the form (wealth, average-tax-rate) in a text file.
+Any guesses how this series was mathematically generated?
+
+Its first 50 records look like so:
+
+linux> cat Canton-Vaud-average-tax-rates-on-wealth-2025 | head -50
+50000 0.000459
+51000 0.000469
+52000 0.000479
+53000 0.000488
+54000 0.000497
+55000 0.000505
+56000 0.000513
+57000 0.000522
+58000 0.000529
+59000 0.000537
+60000 0.000544
+61000 0.000551
+62000 0.000558
+63000 0.000564
+64000 0.000571
+65000 0.000577
+66000 0.000583
+67000 0.000589
+68000 0.000594
+69000 0.000600
+70000 0.000605
+71000 0.000610
+72000 0.000615
+73000 0.000620
+74000 0.000625
+75000 0.000629
+76000 0.000634
+77000 0.000638
+78000 0.000642
+79000 0.000647
+80000 0.000651
+81000 0.000654
+82000 0.000659
+83000 0.000662
+84000 0.000666
+85000 0.000669
+86000 0.000673
+87000 0.000676
+88000 0.000680
+89000 0.000683
+90000 0.000686
+91000 0.000689
+92000 0.000692
+93000 0.000695
+94000 0.000698
+95000 0.000701
+96000 0.000711
+97000 0.000722
+98000 0.000731
+99000 0.000741
+
+🧠 Hypothesis: The ATR is a smoothed spline interpolation of a bracket-based tax schedule
+
+linux> cat ../chat-GPT/vaud_atr_piecewise_predictions.csv | grep "0.00242"
+633000,0.002388,0.0024200821753706915,0.0023849142523810233
+634000,0.002389,0.0024215143421466934,0.0023855372467814395
+635000,0.00239,0.0024229419981611957,0.0023861602411818558
+636000,0.002392,0.0024243651646913764,0.002386783235582272
+637000,0.002393,0.0024257838628808023,0.0023874062299826886
+638000,0.002394,0.002427198113740481,0.002388029224383105
+639000,0.002395,0.0024286079381498947,0.002388652218783521
+661000,0.00242,0.0024585448449736935,0.0024023580955926794
+662000,0.002421,0.0024598583360105246,0.0024029810899930957
+663000,0.002423,0.0024611678647817846,0.002403604084393512
+664000,0.002424,0.002462473449189276,0.0024042270787939285
+665000,0.002425,0.00246377510702712,0.0024048500731943447
+666000,0.002426,0.0024650728559825683,0.002405473067594761
+667000,0.002427,0.0024663667136368013,0.002406096061995177
+668000,0.002428,0.002467656697465722,0.0024067190563955934
+669000,0.002429,0.0024689428248407448,0.0024073420507960096
+690000,0.002451,0.0024950903535607694,0.0024204249332047518
+691000,0.002452,0.002496295831936739,0.0024210479276051684
+692000,0.002453,0.0024974978262711596,0.0024216709220055846
+693000,0.002454,0.0024986963516464627,0.002422293916406001
+694000,0.002455,0.0024998914230581473,0.002422916910806417
+695000,0.002456,0.0025010830554154104,0.0024235399052068333
+696000,0.002457,0.0025022712635417617,0.0024241628996072495
+697000,0.002458,0.002503456062175641,0.002424785894007666
+698000,0.002459,0.0025046374659710284,0.0024254088884080823
+699000,0.00246,0.002505815489498045,0.0024260318828084985
+700000,0.002461,0.0025069901472435565,0.0024266548772089148
+701000,0.002462,0.002508161453611762,0.002427277871609331
+702000,0.002463,0.002509329422924788,0.0024279008660097476
+703000,0.002464,0.0025104940694232673,0.002428523860410164
+704000,0.002465,0.0025116554072669214,0.00242914685481058
+705000,0.002466,0.0025128134505351327,0.0024297698492109963
+
+Beyond my pay grade:
+
+Ajustement de courbe — Wikipédia
+Spline — Wikipédia
+Spline (mathematics) - Wikipedia
+Curve fitting - Wikipedia
+Smoothing spline - Wikipedia
+
+Besides there's no need to go there.
+We have our data
+Just interesting to ask whether their underlying logic has even been put into question
+
+TL;DR
+They're insane
+Merci vielmals
+
+--------------
+
+Instead get back to the meat and potatoes
+
+linux> declarable_wealth=2000000
+linux> cat $NameOfDataFile | awk -F " " -v hit=$declarable_wealth '($1==hit) {printf "%10.f%10.2f\n", $1, $2}'
+   2000000   6127.30
+cat $NameOfDataFile | awk -F " " -v hit=$declarable_wealth '($1==hit) {printf "%10.f%10.2f\n", $1, $2}' | tr -s " " | sed 's/^ //1' | cut -d " " -f2
+6127.30
+
+declarable_wealth=`echo "2'638'000" | tr -d "'"`
+BorneSuperieure=2000000
+T=`cat $NameOfDataFile | awk -F " " -v hit=$declarable_wealth '($1==hit) {printf "%10.f%10.2f\n", $1, $2}' | tr -s " " | sed 's/^ //1' | cut -d " " -f2`
+ATR_max=`units -t "3.39 ‰"`
+
+if [ $declarable_wealth -ge $BorneSuperieure ]
+then
+	units -t " $T + $ATR_max * ( $declarable_wealth - $BorneSuperieure )"
+fi
+8290.12
+
+ca joue
+
+-----------------------------------------------------------
+
+NameOfDataFile="../dat/tabelle-fortune-2-colonnes"
+NameOfCoeffFile="../dat/coefficients-communes-2025"
+
+Annee=2025
+Coefficient_cantonal=155
+Commune="Lausanne"
+
+Coefficient_communal=`cat $NameOfCoeffFile | awk -F " " -v hit="$Commune" '($1 == hit) {print $2}'`
+Coefficient_total=`units -t " ($Coefficient_communal+$Coefficient_cantonal)/100"`
+printf "# %20s%5g%10.2f%10.2f%10.2f\n" $Commune $Annee $Coefficient_communal $Coefficient_cantonal $Coefficient_total | tr -s " "
+# Lausanne 2025 78.50 155.00 2.34
+
+#
+#
+#
+NameOfDataFile=../dat/tabelle-fortune-2-colonnes
+for W in `seq 50000 25000 200000`
+	do
+	cat $NameOfDataFile | awk -F " " -v hit=$W '($1==hit) {printf "%10.f%10.2f\n", $1, $2}'
+	done
+#
+#
+#
+NameOfDataFile=../dat/tabelle-fortune-2-colonnes
+BorneSuperieure=2000000
+ATR_max=`units -t "3.39 ‰"`
+T=`cat $NameOfDataFile | awk -F " " -v hit=$BorneSuperieure '($1==hit) {printf "%10.f%10.2f\n", $1, $2}' | tr -s " " | sed 's/^ //1' | cut -d " " -f2`
+
+for W in `seq 100000 100000 3000000`
+do
+	if [ $W -ge $BorneSuperieure ]
+	then
+		BaseTax=`units -t " $T + $ATR_max * ( $W - $BorneSuperieure )"`
+	else
+		BaseTax=`cat $NameOfDataFile | awk -F " " -v hit=$W '($1==hit) {print $2}'`
+	fi
+	AverageBaseRate=`units -t "$BaseTax / $W"`
+	FinalTax=`units -t "$Coefficient_total * $BaseTax"`
+	AverageFinalRate=`units -t "$FinalTax / $W"`
+	printf "# %20s%5g%10.f%10.2f%10.6f%10.4f%10.2f%10.6f\n" $Commune $Annee $W $BaseTax $AverageBaseRate  $Coefficient_total $FinalTax $AverageFinalRate
+	done
+
+#             Lausanne 2025    100000     75.05  0.000751    2.3350    175.24  0.001752
+#             Lausanne 2025    200000    260.85  0.001304    2.3350    609.08  0.003045
+#             Lausanne 2025    300000    502.85  0.001676    2.3350   1174.15  0.003914
+#             Lausanne 2025    400000    777.70  0.001944    2.3350   1815.93  0.004540
+#             Lausanne 2025    500000   1092.70  0.002185    2.3350   2551.45  0.005103
+#             Lausanne 2025    600000   1407.70  0.002346    2.3350   3286.98  0.005478
+#             Lausanne 2025    700000   1722.70  0.002461    2.3350   4022.50  0.005746
+#             Lausanne 2025    800000   2059.30  0.002574    2.3350   4808.47  0.006011
+#             Lausanne 2025    900000   2398.30  0.002665    2.3350   5600.03  0.006222
+#             Lausanne 2025   1000000   2737.30  0.002737    2.3350   6391.60  0.006392
+#             Lausanne 2025   1100000   3076.30  0.002797    2.3350   7183.16  0.006530
+#             Lausanne 2025   1200000   3415.30  0.002846    2.3350   7974.73  0.006646
+#             Lausanne 2025   1300000   3754.30  0.002888    2.3350   8766.29  0.006743
+#             Lausanne 2025   1400000   4093.30  0.002924    2.3350   9557.86  0.006827
+#             Lausanne 2025   1500000   4432.30  0.002955    2.3350  10349.42  0.006900
+#             Lausanne 2025   1600000   4771.30  0.002982    2.3350  11140.99  0.006963
+#             Lausanne 2025   1700000   5110.30  0.003006    2.3350  11932.55  0.007019
+#             Lausanne 2025   1800000   5449.30  0.003027    2.3350  12724.12  0.007069
+#             Lausanne 2025   1900000   5788.30  0.003046    2.3350  13515.68  0.007114
+#             Lausanne 2025   2000000   6127.30  0.003064    2.3350  14307.25  0.007154
+#             Lausanne 2025   2100000   6466.30  0.003079    2.3350  15098.81  0.007190
+#             Lausanne 2025   2200000   6805.30  0.003093    2.3350  15890.38  0.007223
+#             Lausanne 2025   2300000   7144.30  0.003106    2.3350  16681.94  0.007253
+#             Lausanne 2025   2400000   7483.30  0.003118    2.3350  17473.51  0.007281
+#             Lausanne 2025   2500000   7822.30  0.003129    2.3350  18265.07  0.007306
+#             Lausanne 2025   2600000   8161.30  0.003139    2.3350  19056.64  0.007329
+#             Lausanne 2025   2700000   8500.30  0.003148    2.3350  19848.20  0.007351
+#             Lausanne 2025   2800000   8839.30  0.003157    2.3350  20639.77  0.007371
+#             Lausanne 2025   2900000   9178.30  0.003165    2.3350  21431.33  0.007390
+#             Lausanne 2025   3000000   9517.30  0.003172    2.3350  22222.89  0.007408
+
+#
+# Vous avez constaté des erreurs?
+# Ich habe nix davon zu branlen. Bitte schön.
+# J'ai fait ce travail dans l'esprit de servir la communauté
+# A vous d'apporter les corrections que vous jugerez nécessaires
+#
+
+#
+# Fertig Schluss
+# On envoie vers github et Touiter
+#
+# 23:51:54  9 Dez 2025 DoY 343 Week 50 Di Dienstag +01:00:00
+
+
+#
+# NEXT
+#
+
+Next steps
+
+Tester avec d'autres communes
+Malheureusement, je m'en fous totalement
+
+A vous de jouer
+J'ai posé les bases
+A vous d'improviser
+
+
